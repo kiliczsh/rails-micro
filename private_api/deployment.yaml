@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: private-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: private-api
+  template:
+    metadata:
+      labels:
+        app: private-api
+    spec:
+      containers:
+      - name: private-api
+        image: your_registry/private_api:latest
+        ports:
+        - containerPort: 3002
+        envFrom:
+        - configMapRef:
+            name: private-api-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi

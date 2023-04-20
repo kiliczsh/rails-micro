@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: private-api-config
+data:
+  RAILS_ENV: production
+  # Add more key-value pairs as needed

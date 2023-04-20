@@ -1,0 +1,74 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_push_images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push auth_service image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./auth_service
+          push: true
+          tags: your_registry/auth_service:latest
+
+      - name: Build and push public_api image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./public_api
+          push: true
+          tags: your_registry/public_api:latest
+
+      - name: Build and push private_api image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./private_api
+          push: true
+          tags: your_registry/private_api:latest
+
+  deploy_to_kubernetes:
+    needs: build_and_push_images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install and configure kubectl
+        run: |
+          VERSION=$(curl --silent https://storage.googleapis.com/kubernetes-release/release/stable.txt)
+          curl https://storage.googleapis.com/kubernetes-release/release/$VERSION/bin/linux/amd64/kubectl \
+            --progress-bar \
+            --location \
+            --remote-name
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          echo ${{ secrets.KUBECONFIG }} | base64 --decode > kubeconfig.yaml
+
+      - name: Install and configure Helm
+        run: |
+          curl https://baltocdn.com/helm/signing.asc | sudo gpg --dearmor -o /usr/share/keyrings/helm-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/helm-archive-keyring.gpg] https://baltocdn.com/helm/stable/debian/ all main" \
+            | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install helm
+
+      - name: Deploy microservices
+        run: |
+          export KUBECONFIG=kubeconfig.yaml
+          helm upgrade --install auth-service-release auth_service_chart --set image.repository=your

@@ -1,0 +1,12 @@
+replicaCount: 1
+
+image:
+  repository: your_registry/private_api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3002
+
+resources: {}
